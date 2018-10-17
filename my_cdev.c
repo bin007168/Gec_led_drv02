@@ -19,6 +19,13 @@
 #define LED3     3
 #define LED4     4
 
+#define LED_ON   0
+#define LED_OFF  1
+#define LED_SET  0
+#define LED_GET  1
+#define LED_TYPE 0
+
+
 struct resource * led_res;
 void __iomem *GPIOCOUT_VA;  //0x00
 void __iomem *GPIOCOUTENB_VA; //0x04
@@ -101,27 +108,30 @@ write_size_err:
 
 long new_cdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
-	switch(arg)
-	{
-		case LED1:
-			*(unsigned int *)GPIOEOUT_VA   = (*(unsigned int *)GPIOEOUT_VA  &  ~(0x1 << 13)  ) | cmd << 13 ;
-			break;
+	if(_IOC_TYPE(cmd) == LED_TYPE){
+		switch(_IOC_SIZE(cmd))
+		{
+			case LED1:
+				*(unsigned int *)GPIOEOUT_VA   = (*(unsigned int *)GPIOEOUT_VA  &  ~(0x1 << 13)  ) | _IOC_NR(cmd) << 13 ;
+				break;
 			
-		case LED2:
-			*(unsigned int *)GPIOCOUT_VA   = (*(unsigned int *)GPIOCOUT_VA  &  ~(0x1 << 17)  ) | cmd << 17;
-			break;
+			case LED2:
+				*(unsigned int *)GPIOCOUT_VA   = (*(unsigned int *)GPIOCOUT_VA  &  ~(0x1 << 17)  ) | _IOC_NR(cmd) << 17;
+				break;
 			
-		case LED3:
-			*(unsigned int *)GPIOCOUT_VA   = (*(unsigned int *)GPIOCOUT_VA  &  ~(0x1 << 8)  ) |  cmd << 8 ;
-			break;
+			case LED3:
+				*(unsigned int *)GPIOCOUT_VA   = (*(unsigned int *)GPIOCOUT_VA  &  ~(0x1 << 8)  ) |  _IOC_NR(cmd) << 8 ;
+				break;
 			
-		case LED4:
-			*(unsigned int *)GPIOCOUT_VA   = (*(unsigned int *)GPIOCOUT_VA  &  ~(0x1 << 7)  ) |  cmd << 7 ;
-			break;
+			case LED4:
+				*(unsigned int *)GPIOCOUT_VA   = (*(unsigned int *)GPIOCOUT_VA  &  ~(0x1 << 7)  ) |  _IOC_NR(cmd) << 7 ;
+				break;
 			
-		default:
-			printk("input error , try again please \n");
+			default:
+				printk("input error , try again please \n");
+		}
 	}
+
 
 	return 0;
 }
@@ -233,3 +243,4 @@ module_init(new_cdev_init);
 module_exit(new_cdev_exit);
 
 MODULE_LICENSE("GPL");
+

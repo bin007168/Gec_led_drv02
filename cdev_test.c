@@ -43,7 +43,6 @@ int main(int argc,char *argv[])
 	printf("read count of ret from kernel is %d \n",ret);
 	printf("the data from kernel is [%s]  read the count is %d\n",rbuf,ret);
 
-	_IOC(dir, type, nr, size)
 	while(1)
 	{
 		cmd = _IOC(LED_SET, LED_TYPE, LED_ON, LED1);
@@ -74,7 +73,7 @@ int main(int argc,char *argv[])
 	}
 
 	close(fd);
-      _IOC_DIR(nr)
+
 	return 0;
 }
 
