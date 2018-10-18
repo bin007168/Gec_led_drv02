@@ -108,23 +108,38 @@ write_size_err:
 
 long new_cdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
+	//将用户空间传过来的地址给 value
+	unsigned int  __user * value =	(unsigned int  __user *)arg;
+
 	if(_IOC_TYPE(cmd) == LED_TYPE){
 		switch(_IOC_SIZE(cmd))
 		{
 			case LED1:
-				*(unsigned int *)GPIOEOUT_VA   = (*(unsigned int *)GPIOEOUT_VA  &  ~(0x1 << 13)  ) | _IOC_NR(cmd) << 13 ;
+			//	*(unsigned int *)GPIOEOUT_VA   = (*(unsigned int *)GPIOEOUT_VA  &  ~(0x1 << 13)  ) | _IOC_NR(cmd) << 13 ;
+				writel(((readl(GPIOEOUT_VA) &  ~(0x1 << 13)) | (_IOC_NR(cmd) << 13) ),GPIOEOUT_VA);
+				if(copy_to_user(value,GPIOEOUT_VA,sizeof(unsigned int)))
+					printk("copy to user failed\n");
 				break;
 			
 			case LED2:
-				*(unsigned int *)GPIOCOUT_VA   = (*(unsigned int *)GPIOCOUT_VA  &  ~(0x1 << 17)  ) | _IOC_NR(cmd) << 17;
+			//	*(unsigned int *)GPIOCOUT_VA   = (*(unsigned int *)GPIOCOUT_VA  &  ~(0x1 << 17)  ) | _IOC_NR(cmd) << 17;
+				writel(((readl(GPIOCOUT_VA) &  ~(0x1 << 17)) | (_IOC_NR(cmd) << 17) ),GPIOCOUT_VA);
+				if(copy_to_user(value,GPIOCOUT_VA,sizeof(unsigned int)))
+					printk("copy to user failed\n");
 				break;
 			
 			case LED3:
-				*(unsigned int *)GPIOCOUT_VA   = (*(unsigned int *)GPIOCOUT_VA  &  ~(0x1 << 8)  ) |  _IOC_NR(cmd) << 8 ;
+			//	*(unsigned int *)GPIOCOUT_VA   = (*(unsigned int *)GPIOCOUT_VA  &  ~(0x1 << 8)  ) |  _IOC_NR(cmd) << 8 ;
+				writel(((readl(GPIOCOUT_VA) &  ~(0x1 << 8)) | (_IOC_NR(cmd) << 8) ),GPIOCOUT_VA);
+				if(copy_to_user(value,GPIOCOUT_VA,sizeof(unsigned int)))
+					printk("copy to user failed\n");
 				break;
 			
 			case LED4:
-				*(unsigned int *)GPIOCOUT_VA   = (*(unsigned int *)GPIOCOUT_VA  &  ~(0x1 << 7)  ) |  _IOC_NR(cmd) << 7 ;
+			//	*(unsigned int *)GPIOCOUT_VA   = (*(unsigned int *)GPIOCOUT_VA  &  ~(0x1 << 7)  ) |  _IOC_NR(cmd) << 7 ;
+				writel(((readl(GPIOCOUT_VA) &  ~(0x1 << 7)) | (_IOC_NR(cmd) << 7) ),GPIOCOUT_VA);
+				if(copy_to_user(value,GPIOCOUT_VA,sizeof(unsigned int)))
+					printk("copy to user failed\n");
 				break;
 			
 			default:
