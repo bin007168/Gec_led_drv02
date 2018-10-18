@@ -34,57 +34,57 @@ int main(int argc,char *argv[])
 		return -1;
 	}
 	
-    strcpy(wbuf,"hello new");
+    strcpy(wbuf,"hello new interupt");
 	ret = write(fd,wbuf,strlen(wbuf));
-	printf("write count of ret to kernel is %d\n",ret);
+//	printf("write count of ret to kernel is %d\n",ret);
 	
 	ret = read(fd,rbuf,20);
 	printf("read count of ret from kernel is %d \n",ret);
 	printf("the data from kernel is [%s]  read the count is %d\n",rbuf,ret);
 
-	
-	cmd = _IOC(LED_SET, LED_TYPE, LED_ON, LED1);
+
+		
+    cmd = _IOC(LED_SET, LED_TYPE, LED_ON, LED1);
 	ioctl(fd, cmd, &value);
-	printf("%#x\n",value); //GPIOE   //加入#表示 输出形式为 0x43279fd   类似如此的
+//	printf("%#x\n",value); //GPIOE	 //加入#表示 输出形式为 0x43279fd	 类似如此的
 	sleep(1);
 	
 	cmd = _IOC(LED_SET, LED_TYPE, LED_ON, LED2);
 	ioctl(fd, cmd, &value);
-	printf("%#x\n",value); //GPIOE   //加入#表示 输出形式为 0x43279fd   类似如此的
+//	printf("%#x\n",value); //GPIOE	 //加入#表示 输出形式为 0x43279fd	 类似如此的
 	sleep(1);
 	
 	cmd = _IOC(LED_SET, LED_TYPE, LED_ON, LED3);
 	ioctl(fd, cmd, &value);
-	printf("%#x\n",value); //GPIOE   //加入#表示 输出形式为 0x43279fd   类似如此的
+//	printf("%#x\n",value); //GPIOE	 //加入#表示 输出形式为 0x43279fd	 类似如此的
 	sleep(1);
 	
 	cmd = _IOC(LED_SET, LED_TYPE, LED_ON, LED4);
 	ioctl(fd, cmd, &value);
-	printf("%#x\n",value); //GPIOE   //加入#表示 输出形式为 0x43279fd   类似如此的
+//	printf("%#x\n",value); //GPIOE	 //加入#表示 输出形式为 0x43279fd	 类似如此的
 	sleep(1);
 
 	cmd = _IOC(LED_SET, LED_TYPE, LED_OFF, LED1);
 	ioctl(fd, cmd, &value);
-	printf("%#x\n",value); //GPIOE   //加入#表示 输出形式为 0x43279fd   类似如此的
+//	printf("%#x\n",value); //GPIOE	 //加入#表示 输出形式为 0x43279fd	 类似如此的
 	sleep(1);
 	
 	cmd = _IOC(LED_SET, LED_TYPE, LED_OFF, LED2);
 	ioctl(fd, cmd, &value);
-	printf("%#x\n",value); //GPIOE   //加入#表示 输出形式为 0x43279fd   类似如此的
+//	printf("%#x\n",value); //GPIOE	 //加入#表示 输出形式为 0x43279fd	 类似如此的
 	sleep(1);
 	
 	cmd = _IOC(LED_SET, LED_TYPE, LED_OFF, LED3);
 	ioctl(fd, cmd, &value);
-	printf("%#x\n",value); //GPIOE   //加入#表示 输出形式为 0x43279fd   类似如此的
+//	printf("%#x\n",value); //GPIOE	 //加入#表示 输出形式为 0x43279fd	 类似如此的
 	sleep(1);
 	
 	cmd = _IOC(LED_SET, LED_TYPE, LED_OFF, LED4);
 	ioctl(fd, cmd, &value);
-	printf("%#x\n",value); //GPIOE   //加入#表示 输出形式为 0x43279fd   类似如此的
+//	printf("%#x\n",value); //GPIOE	 //加入#表示 输出形式为 0x43279fd	 类似如此的
 	sleep(1);
 
-
-	
+	while(1);	
 
 	close(fd);
 
