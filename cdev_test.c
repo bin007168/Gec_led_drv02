@@ -43,7 +43,7 @@ int main(int argc,char *argv[])
 	printf("the data from kernel is [%s]  read the count is %d\n",rbuf,ret);
 
 
-		
+/*		
     cmd = _IOC(LED_SET, LED_TYPE, LED_ON, LED1);
 	ioctl(fd, cmd, &value);
 //	printf("%#x\n",value); //GPIOE	 //加入#表示 输出形式为 0x43279fd	 类似如此的
@@ -83,8 +83,22 @@ int main(int argc,char *argv[])
 	ioctl(fd, cmd, &value);
 //	printf("%#x\n",value); //GPIOE	 //加入#表示 输出形式为 0x43279fd	 类似如此的
 	sleep(1);
-
-	while(1);	
+*/
+	memset(rbuf, 0, sizeof(rbuf));
+	while(1)
+	{
+		read(fd,rbuf,4);
+		printf("the rbuf is %s\n",rbuf);
+		if(strcmp(rbuf, "key2") == 0)
+			printf("the rbuf is key2 strcmp\n");
+		else if(strcmp(rbuf,"key3") == 0)
+			printf("the rbuf is key3 strcmp\n");
+		memset(rbuf, 0, sizeof(rbuf));
+		count ++;
+		if(count == 10)
+			break;
+		
+	}
 
 	close(fd);
 
