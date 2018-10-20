@@ -18,6 +18,8 @@
 #include <cfg_type.h>
 #include <linux/wait.h>
 #include <linux/sched.h>
+#include <linux/delay.h>
+#include <linux/gpio.h>
 
 
 #define SIZE     1024
@@ -31,6 +33,26 @@
 #define LED_SET  0
 #define LED_GET  1
 #define LED_TYPE 0
+
+#define KEY2_IRQ   IRQ_GPIO_A_START+28
+#define KEY3_IRQ   IRQ_GPIO_B_START+30
+#define KEY4_IRQ   IRQ_GPIO_B_START+31
+#define KEY6_IRQ   IRQ_GPIO_B_START+9
+
+
+struct KEY_INFO {
+	unsigned int irq;
+	char name[10];
+	unsigned int gpio;
+};
+
+struct KEY_INFO keys[] = {
+	{KEY2_IRQ,"KEY2",PAD_GPIO_A+28},
+	{KEY3_IRQ,"KEY3",PAD_GPIO_B+30},
+	{KEY4_IRQ,"KEY4",PAD_GPIO_B+31},
+	{KEY6_IRQ,"KEY6",PAD_GPIO_B+9},
+};
+
 
 
 struct resource * led_res;
@@ -58,8 +80,10 @@ dev_t MyCdevNum;
 int major = 241;
 int minor = 0;
 char Kbuf[SIZE];
+int key;
 
 int condition = 0;  //进程唤醒标志
+
 
 DECLARE_WAIT_QUEUE_HEAD(cdev_wq);  //定义一个等待队列
 
@@ -189,46 +213,17 @@ struct file_operations new_cdev_ops = {
 irqreturn_t  new_cdev_handler(int irqno, void *arg)
 {
 	int value;
+	struct KEY_INFO  kinfo = *(struct KEY_INFO *)arg;
 	memset(Kbuf, 0, sizeof(Kbuf));
-	switch(irqno)
+
+	value = gpio_get_value(kinfo.gpio);
+	mdelay(100);
+	if(value == gpio_get_value(kinfo.gpio))
 	{
-		case IRQ_GPIO_A_START+28:
-			
-				// 获取当前的引脚电平状态
-			    value =	(readl(GPIOAOUT_VA) >> 28) & 0x1;
-			    // 延时
-			    mdelay(100);
-			    // 再次获取当前的引脚电平状态进行比较
-			    if(value ==	((readl(GPIOAOUT_VA) >> 28) & 0x1))  
-			    {
-			    	while((readl(GPIOAOUT_VA) >> 28) & 0x1);
-			   		strcpy(Kbuf,"key2");
-					printk("key2\n");
-			   		condition = 1;
-			   		wake_up(&cdev_wq);
-			    }  
-				break;
-			
-		case IRQ_GPIO_B_START+30:
-
-			   // 获取当前的引脚电平状态
-			   value = (readl(GPIOBOUT_VA) >> 30) & 0x1;
-			   // 延时
-			   mdelay(100);
-			   // 再次获取当前的引脚电平状态进行比较
-			   if(value ==	((readl(GPIOBOUT_VA) >> 30) & 0x1))  
-			   {	
-			   		while((readl(GPIOBOUT_VA) >> 30) & 0x1);
-			   		strcpy(Kbuf,"key3");
-			   		printk("key3\n");
-			  		condition = 1;
-			   		wake_up(&cdev_wq);  		
-			   } 
-			   break;
-
-		default: 
-			   	break;
-			
+		strcpy(Kbuf,kinfo.name);
+		printk("irq_num is %d the kinfo.name is %s\n",irqno,Kbuf);
+		condition = 1;
+		wake_up(&cdev_wq);
 	}
 	       
    return IRQ_HANDLED;
@@ -237,7 +232,6 @@ irqreturn_t  new_cdev_handler(int irqno, void *arg)
 int new_cdev_init(void)
 {
 	//【1】定义变量，分配空间
-	int value;
 	my_cdev = cdev_alloc();
 	if(my_cdev == NULL)
 		goto cdev_alloc_err;
@@ -325,21 +319,22 @@ int new_cdev_init(void)
 	*(unsigned int *)GPIOEOUT_VA |= (1<<13);
 	*(unsigned int *)GPIOCOUT_VA &= ~(1<<14);	  //beep
 
-	//中断key2申请
-	if( request_irq(IRQ_GPIO_A_START+28,          //中断源(编号)
-	                    new_cdev_handler  , //中断服务程序
-	                    IRQF_DISABLED | IRQF_TRIGGER_FALLING, //独占性中断，下降沿触发
-	                    "gec_key2",
-	                    NULL))
-	                    goto request_irq_err2;
 
-	//中断key3申请 GPIOB30
-	if( request_irq(IRQ_GPIO_B_START+30,          //中断源(编号)
+	for(key = 0;key<4;key++)
+	{
+		if( request_irq(keys[key].irq,          //中断源(编号)
 	                    new_cdev_handler  , //中断服务程序
 	                    IRQF_DISABLED | IRQF_TRIGGER_FALLING, //独占性中断，下降沿触发
-	                    "gec_key3",
-	                    NULL))
-	                    goto request_irq_err3;
+	                    keys[key].name,
+	                    &keys[key]))
+
+				goto request_irq_err;
+
+		if(gpio_request(keys[key].gpio, keys[key].name))
+			goto gpio_request_err;
+		if(gpio_direction_input(keys[key].gpio))
+			goto gpio_direction_input_err;
+	}
 
 
 	return 0;
@@ -356,12 +351,16 @@ cdev_add_err:
 request_mem_region_err:	
 	printk(" request_mem_region Failed!\n");
 	return -EINVAL;	
-request_irq_err2:
-	printk("request_irq_err2 \n");
+request_irq_err:
+	printk("request_irq_err \n");
 	return -EINVAL;
-request_irq_err3:
-	printk("request_irq_err3 \n");
-	return -EINVAL;
+gpio_request_err:
+	printk(KERN_ALERT "gpio_request err \n");
+	return -EINVAL;	
+gpio_direction_input_err:
+	printk(KERN_ALERT "gpio_direction_input err \n");
+	return -EINVAL;	
+
 
 }
 
@@ -378,10 +377,11 @@ void new_cdev_exit(void)
 	release_mem_region(0xC001A000, 0x5000);
 
 	//中断释放
-	free_irq(IRQ_GPIO_A_START+28,   //中断源(编号)  ----->  芯片商提供
-					NULL);          //中断服务程序传参
-	free_irq(IRQ_GPIO_B_START+30,   //中断源(编号)  ----->  芯片商提供
-	NULL);          //中断服务程序传参
+    for(key=0;key<4;key++)
+    {
+    	free_irq(keys[key].irq, &keys[key]);
+		gpio_free(keys[key].gpio);
+    }
 }
 
 
