@@ -88,9 +88,15 @@ int condition = 0;  //进程唤醒标志
 DECLARE_WAIT_QUEUE_HEAD(cdev_wq);  //定义一个等待队列
 
 
+atomic_t flag = ATOMIC_INIT(1);
+
 int new_cdev_open(struct inode *inode, struct file * filp)
 {
-	printk("new_cdev_open\n");
+	if(atomic_dec_and_test(&flag)){
+		printk("new_cdev_open\n");
+	}else
+		return -EBUSY;
+	
 
 	return 0;
 }
@@ -98,7 +104,8 @@ int new_cdev_open(struct inode *inode, struct file * filp)
 int new_cdev_release(struct inode *inode, struct file *filp)
 {
 	printk("new_cdev_release\n");
-
+	atomic_inc(&flag);
+	
 	return 0;
 }
 
