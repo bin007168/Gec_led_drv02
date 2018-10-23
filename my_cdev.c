@@ -20,6 +20,8 @@
 #include <linux/sched.h>
 #include <linux/delay.h>
 #include <linux/gpio.h>
+#include <linux/semaphore.h>
+
 
 
 #define SIZE     1024
@@ -27,6 +29,12 @@
 #define LED2     2
 #define LED3     3
 #define LED4     4
+
+#define LED_ALL1 5
+#define LED_ALL2 6
+#define LED_ALL3 7
+#define LED_ALL4 8
+
 
 #define LED_ON   0
 #define LED_OFF  1
@@ -81,6 +89,7 @@ int major = 241;
 int minor = 0;
 char Kbuf[SIZE];
 int key;
+char led_value[4];
 
 int condition = 0;  //进程唤醒标志
 
@@ -88,15 +97,18 @@ int condition = 0;  //进程唤醒标志
 DECLARE_WAIT_QUEUE_HEAD(cdev_wq);  //定义一个等待队列
 
 
-atomic_t flag = ATOMIC_INIT(1);
+atomic_t flag = ATOMIC_INIT(1);   //定义可以进来几个用户
+DEFINE_SEMAPHORE(cdev_sem);    //信号量
+
 
 int new_cdev_open(struct inode *inode, struct file * filp)
 {
 	if(atomic_dec_and_test(&flag)){
 		printk("new_cdev_open\n");
-	}else
+	}else{
+		atomic_inc(&flag);
 		return -EBUSY;
-	
+	}	
 
 	return 0;
 }
@@ -105,6 +117,7 @@ int new_cdev_release(struct inode *inode, struct file *filp)
 {
 	printk("new_cdev_release\n");
 	atomic_inc(&flag);
+	up(&cdev_sem);
 	
 	return 0;
 }
@@ -169,40 +182,102 @@ long new_cdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	//将用户空间传过来的地址给 value
 	unsigned int  __user * value =	(unsigned int  __user *)arg;
 
-	if(_IOC_TYPE(cmd) == LED_TYPE){
-		switch(_IOC_SIZE(cmd))
+	if(_IOC_TYPE(cmd) == LED_TYPE)
+	{
+		if(_IOC_DIR(cmd) == LED_SET)
 		{
-			case LED1:
-			//	*(unsigned int *)GPIOEOUT_VA   = (*(unsigned int *)GPIOEOUT_VA  &  ~(0x1 << 13)  ) | _IOC_NR(cmd) << 13 ;
-				writel(((readl(GPIOEOUT_VA) &  ~(0x1 << 13)) | (_IOC_NR(cmd) << 13) ),GPIOEOUT_VA);
-				if(copy_to_user(value,GPIOEOUT_VA,sizeof(unsigned int)))
-					printk("copy to user failed\n");
-				break;
-			
-			case LED2:
-			//	*(unsigned int *)GPIOCOUT_VA   = (*(unsigned int *)GPIOCOUT_VA  &  ~(0x1 << 17)  ) | _IOC_NR(cmd) << 17;
-				writel(((readl(GPIOCOUT_VA) &  ~(0x1 << 17)) | (_IOC_NR(cmd) << 17) ),GPIOCOUT_VA);
-				if(copy_to_user(value,GPIOCOUT_VA,sizeof(unsigned int)))
-					printk("copy to user failed\n");
-				break;
-			
-			case LED3:
-			//	*(unsigned int *)GPIOCOUT_VA   = (*(unsigned int *)GPIOCOUT_VA  &  ~(0x1 << 8)  ) |  _IOC_NR(cmd) << 8 ;
-				writel(((readl(GPIOCOUT_VA) &  ~(0x1 << 8)) | (_IOC_NR(cmd) << 8) ),GPIOCOUT_VA);
-				if(copy_to_user(value,GPIOCOUT_VA,sizeof(unsigned int)))
-					printk("copy to user failed\n");
-				break;
-			
-			case LED4:
-			//	*(unsigned int *)GPIOCOUT_VA   = (*(unsigned int *)GPIOCOUT_VA  &  ~(0x1 << 7)  ) |  _IOC_NR(cmd) << 7 ;
-				writel(((readl(GPIOCOUT_VA) &  ~(0x1 << 7)) | (_IOC_NR(cmd) << 7) ),GPIOCOUT_VA);
-				if(copy_to_user(value,GPIOCOUT_VA,sizeof(unsigned int)))
-					printk("copy to user failed\n");
-				break;
-			
-			default:
-				printk("input error , try again please \n");
+			switch(_IOC_SIZE(cmd))
+			{
+				case LED1:
+				//	*(unsigned int *)GPIOEOUT_VA   = (*(unsigned int *)GPIOEOUT_VA  &  ~(0x1 << 13)  ) | _IOC_NR(cmd) << 13 ;
+					writel(((readl(GPIOEOUT_VA) &  ~(0x1 << 13)) | (_IOC_NR(cmd) << 13) ),GPIOEOUT_VA);
+					if(copy_to_user(value,GPIOEOUT_VA,sizeof(unsigned int)))
+						printk("copy to user failed\n");
+					break;
+				
+				case LED2:
+				//	*(unsigned int *)GPIOCOUT_VA   = (*(unsigned int *)GPIOCOUT_VA  &  ~(0x1 << 17)  ) | _IOC_NR(cmd) << 17;
+					writel(((readl(GPIOCOUT_VA) &  ~(0x1 << 17)) | (_IOC_NR(cmd) << 17) ),GPIOCOUT_VA);
+					if(copy_to_user(value,GPIOCOUT_VA,sizeof(unsigned int)))
+						printk("copy to user failed\n");
+					break;
+				
+				case LED3:
+				//	*(unsigned int *)GPIOCOUT_VA   = (*(unsigned int *)GPIOCOUT_VA  &  ~(0x1 << 8)  ) |  _IOC_NR(cmd) << 8 ;
+					writel(((readl(GPIOCOUT_VA) &  ~(0x1 << 8)) | (_IOC_NR(cmd) << 8) ),GPIOCOUT_VA);
+					if(copy_to_user(value,GPIOCOUT_VA,sizeof(unsigned int)))
+						printk("copy to user failed\n");
+					break;
+				
+				case LED4:
+				//	*(unsigned int *)GPIOCOUT_VA   = (*(unsigned int *)GPIOCOUT_VA  &  ~(0x1 << 7)  ) |  _IOC_NR(cmd) << 7 ;
+					writel(((readl(GPIOCOUT_VA) &  ~(0x1 << 7)) | (_IOC_NR(cmd) << 7) ),GPIOCOUT_VA);
+					if(copy_to_user(value,GPIOCOUT_VA,sizeof(unsigned int)))
+						printk("copy to user failed\n");
+					break;
+					
+				case LED_ALL1:
+					down_interruptible(&cdev_sem);
+					
+					writel(((readl(GPIOEOUT_VA) &  ~(0x1 << 13)) | (1 << 13) ),GPIOEOUT_VA);  //D7 off
+					writel(((readl(GPIOCOUT_VA) &  ~(0x1 << 17)) | (1 << 17) ),GPIOCOUT_VA);  //D8 off
+					writel(((readl(GPIOCOUT_VA) &  ~(0x1 << 8))  | (1 << 8) ),GPIOCOUT_VA);    //D9 off
+					writel(((readl(GPIOCOUT_VA) &  ~(0x1 << 7))  | (1 << 7) ),GPIOCOUT_VA);    //D10 off
+					
+					mdelay(500);
+					up(&cdev_sem);	
+					break;
+					
+				case LED_ALL2:
+					down_interruptible(&cdev_sem);		
+					
+					writel(((readl(GPIOEOUT_VA) &  ~(0x1 << 13)) | (1 << 13) ),GPIOEOUT_VA);  //D7 on
+					writel(((readl(GPIOCOUT_VA) &  ~(0x1 << 17)) | (0 << 17) ),GPIOCOUT_VA);  //D8 on
+					writel(((readl(GPIOCOUT_VA) &  ~(0x1 << 8))  | (1 << 8) ),GPIOCOUT_VA);     //D9 off
+					writel(((readl(GPIOCOUT_VA) &  ~(0x1 << 7))  | (0 << 7) ),GPIOCOUT_VA);     //D10 off
+
+					mdelay(500);
+					up(&cdev_sem);
+					break;
+					
+				case LED_ALL3:
+					down_interruptible(&cdev_sem);
+					
+					writel(((readl(GPIOEOUT_VA) &  ~(0x1 << 13)) | (0 << 13) ),GPIOEOUT_VA);  //D7 on
+					writel(((readl(GPIOCOUT_VA) &  ~(0x1 << 17)) | (1 << 17) ),GPIOCOUT_VA);  //D8 on
+					writel(((readl(GPIOCOUT_VA) &  ~(0x1 << 8))  | (0 << 8) ),GPIOCOUT_VA);     //D9 on
+					writel(((readl(GPIOCOUT_VA) &  ~(0x1 << 7))  | (1 << 7) ),GPIOCOUT_VA);     //D10 off
+					
+					mdelay(500);
+					up(&cdev_sem);			
+					break;
+
+				case LED_ALL4:
+					down_interruptible(&cdev_sem);
+					
+					writel(((readl(GPIOEOUT_VA) &  ~(0x1 << 13)) | (0 << 13) ),GPIOEOUT_VA);  //D7 on
+					writel(((readl(GPIOCOUT_VA) &  ~(0x1 << 17)) | (0 << 17) ),GPIOCOUT_VA);  //D8 on
+					writel(((readl(GPIOCOUT_VA) &  ~(0x1 << 8))  | (0 << 8) ),GPIOCOUT_VA);     //D9 on
+					writel(((readl(GPIOCOUT_VA) &  ~(0x1 << 7))  | (0 << 7) ),GPIOCOUT_VA);     //D10 on
+					
+					mdelay(500);
+					up(&cdev_sem);	
+					break;
+				
+				default:
+					printk("input error , try again please \n");
+			}
 		}
+		else if(_IOC_DIR(cmd) == LED_GET)
+		{
+			led_value[0] = 	(readl(GPIOEOUT_VA)>>13) & 0x1;
+			led_value[1] = 	(readl(GPIOCOUT_VA)>>17) & 0x1;
+			led_value[2] = 	(readl(GPIOCOUT_VA)>>8 ) & 0x1;
+			led_value[3] = 	(readl(GPIOCOUT_VA)>>7 ) & 0x1;
+			if(copy_to_user(value,led_value,sizeof(unsigned int)))
+				printk("copy to user failed\n");
+		}
+		
 	}
 
 
